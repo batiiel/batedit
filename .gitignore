@@ -1,0 +1,8 @@
+*.txt
+go.mod
+go.sum
+*.exe
+cursor.go
+batedit
+ego
+
