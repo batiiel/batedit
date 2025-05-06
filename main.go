@@ -14,9 +14,7 @@ func main() {
 		e.Doc.ReadFile(os.Args[1])
 	}
 	for {
-		e.Screen.Clear()
-		e.DrawStatusBar()
-		e.Screen.DrawDocument(e.Doc)
+		e.Draw()
 		e.HandlerEvent()
 	}
 }

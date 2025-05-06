@@ -10,13 +10,18 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
-type Editor struct {
-	Doc      *model.Documnet
-	Screen   *screen.ScreenBuffer
-	saveMode bool
+type EditorMode int
 
-	msg     string
-	cx_temp int
+const (
+	ModeEdit EditorMode = iota
+	ModeSave
+)
+
+type Editor struct {
+	Doc       *model.Documnet
+	Screen    *screen.ScreenBuffer
+	Mode      EditorMode
+	oldCursor struct{ X, Y int }
 }
 
 func New() *Editor {
@@ -26,24 +31,41 @@ func New() *Editor {
 		os.Exit(1)
 	}
 	e := &Editor{}
+	e.Mode = ModeEdit
 	e.Doc = model.NewDocumnet()
 	e.Screen = screen.NewScreenBuffer()
-	e.saveMode = false
-
-	e.msg = ""
 	return e
 }
 
-func (e *Editor) DrawStatusBar() {
-	if !e.saveMode {
-		e.StatusBar()
-	} else {
-		e.SaveBar()
+func (e *Editor) Draw() {
+	e.Screen.Clear()
+	e.DrawStatusBar()
+
+	if e.Mode == ModeEdit {
+		e.Screen.ScrollDocument(e.Doc)
 	}
 
+	e.Screen.RenderDocumnet(e.Doc)
+
+	if e.Mode == ModeEdit {
+		termbox.SetCursor(e.Doc.Cursor.X-e.Screen.OffsetCol+e.Doc.CoutnNumLines+1, e.Doc.Cursor.Y-e.Screen.OffsetRow)
+	} else if e.Mode == ModeSave {
+		termbox.SetCursor(e.Doc.Cursor.X, e.Doc.Cursor.Y)
+	}
+
+	termbox.Flush()
 }
+
+func (e *Editor) DrawStatusBar() {
+	if e.Mode == ModeEdit {
+		e.StatusBar()
+	} else if e.Mode == ModeSave {
+		e.SaveBar()
+	}
+}
+
 func (e *Editor) SaveBar() {
-	text := "filename:" + e.Doc.Name
+	text := "save file:" + e.Doc.Name
 	x := len([]rune(text))
 	e.Doc.Cursor.X = x
 	e.Doc.Cursor.Y = e.Screen.Height - 1
@@ -57,7 +79,6 @@ func (e *Editor) StatusBar() {
 	len_bar += len([]rune(text)) + len([]rune(pos_cur))
 	if len_bar >= e.Screen.Width {
 		e.printBar("...")
-		termbox.Flush()
 		return
 	}
 	e.printBar(text)
@@ -89,39 +110,45 @@ func (e *Editor) HandlerEvent() {
 
 	switch event.Type {
 	case termbox.EventKey:
-		// if e.saveMode {
-		// 	saveProcessKeypress(event.Key, event.Ch)
-		// } else {
-		e.handlerKeypress(event.Key, event.Ch)
-		// }
+		if e.Mode == ModeEdit {
+			e.editorHandlerKeypress(event.Key, event.Ch)
+		} else if e.Mode == ModeSave {
+			e.saveHandlerKeypress(event.Key, event.Ch)
+		}
 	case termbox.EventResize:
 		e.Screen.ReSize(event.Width, event.Height)
 	}
 }
 
-// func saveProcessKeypress(key termbox.Key, ch rune) {
-// 	switch key {
-// 	case termbox.KeyCtrlQ, termbox.KeyEsc:
-// 		termbox.Close()
-// 		os.Exit(0)
-// 	case termbox.KeyBackspace, termbox.KeyBackspace2:
-// 		e.saveDelChar()
-// 	case termbox.KeyEnter:
-// 		e.saveMode = false
-// 		e.WriteFile()
-// 		e.cx = 0
-// 		e.cy = 0
-// 	default:
-// 		e.saveInserChar(ch)
-// 	}
-// }
+func (e *Editor) saveHandlerKeypress(key termbox.Key, ch rune) {
+	switch key {
+	case termbox.KeyCtrlQ, termbox.KeyEsc:
+		termbox.Close()
+		os.Exit(0)
+	case termbox.KeyBackspace, termbox.KeyBackspace2:
+		e.saveDelChar()
+	case termbox.KeyEnter:
+		e.Doc.SaveToFile()
+		e.Mode = ModeEdit
+		e.Doc.Cursor.X = e.oldCursor.X
+		e.Doc.Cursor.Y = e.oldCursor.Y
+	default:
+		e.saveInserChar(ch)
+	}
+}
 
-func (e *Editor) handlerKeypress(key termbox.Key, ch rune) {
+func (e *Editor) editorHandlerKeypress(key termbox.Key, ch rune) {
 	switch key {
 	case termbox.KeyCtrlQ, termbox.KeyEsc:
 		termbox.Close()
 		os.Exit(0)
 	case termbox.KeyCtrlS:
+		if e.Doc.Name == "" {
+			e.Mode = ModeSave
+			e.oldCursor.X = e.Doc.Cursor.X
+			e.oldCursor.Y = e.Doc.Cursor.Y
+			return
+		}
 		e.Doc.SaveToFile()
 	case termbox.KeyArrowDown, termbox.KeyArrowLeft, termbox.KeyArrowRight, termbox.KeyArrowUp:
 		e.moveCursor(key)
@@ -136,7 +163,7 @@ func (e *Editor) handlerKeypress(key termbox.Key, ch rune) {
 	case termbox.KeyHome:
 		e.Doc.Cursor.X = 0
 	case termbox.KeyEnd:
-		e.Doc.Cursor.X = len(e.Doc.TextBuffer[e.Doc.Cursor.Y]) - 1
+		e.Doc.Cursor.X = len(e.Doc.TextBuffer[e.Doc.Cursor.Y])
 	case termbox.KeyTab:
 		e.Doc.InsertChar('\t', e.Screen.Height)
 	case termbox.KeySpace:
@@ -158,8 +185,8 @@ func (e *Editor) moveCursor(key termbox.Key) {
 			// Корректируем X, чтобы не выйти за границы новой строки
 
 			maxX := len(e.Doc.TextBuffer[e.Doc.Cursor.Y])
-			if e.cx_temp < maxX {
-				e.Doc.Cursor.X = e.cx_temp
+			if e.oldCursor.X < maxX {
+				e.Doc.Cursor.X = e.oldCursor.X
 			} else if e.Doc.Cursor.X > maxX {
 				e.Doc.Cursor.X = maxX
 			}
@@ -170,8 +197,8 @@ func (e *Editor) moveCursor(key termbox.Key) {
 			// Корректируем X, чтобы не выйти за границы новой строки
 
 			maxX := len(e.Doc.TextBuffer[e.Doc.Cursor.Y])
-			if e.cx_temp < maxX {
-				e.Doc.Cursor.X = e.cx_temp
+			if e.oldCursor.X < maxX {
+				e.Doc.Cursor.X = e.oldCursor.X
 			} else if e.Doc.Cursor.X > maxX {
 				e.Doc.Cursor.X = maxX
 			}
@@ -179,20 +206,26 @@ func (e *Editor) moveCursor(key termbox.Key) {
 	case termbox.KeyArrowRight:
 		if e.Doc.Cursor.X < len(e.Doc.TextBuffer[e.Doc.Cursor.Y]) {
 			e.Doc.Cursor.X++
-		} else if e.Doc.Cursor.Y <= len(e.Doc.TextBuffer) {
+		} else if e.Doc.Cursor.Y < len(e.Doc.TextBuffer)-1 {
 			e.Doc.Cursor.Y++
 			e.Doc.Cursor.X = 0
 		}
-		e.cx_temp = e.Doc.Cursor.X
+		e.oldCursor.X = e.Doc.Cursor.X
 	case termbox.KeyArrowLeft:
 		if e.Doc.Cursor.X > 0 {
 			e.Doc.Cursor.X--
-		} else {
-			if e.Doc.Cursor.Y > 0 {
-				e.Doc.Cursor.Y--
-				e.Doc.Cursor.X = len(e.Doc.TextBuffer[e.Doc.Cursor.Y])
-			}
+		} else if e.Doc.Cursor.Y > 0 {
+			e.Doc.Cursor.Y--
+			e.Doc.Cursor.X = len(e.Doc.TextBuffer[e.Doc.Cursor.Y])
 		}
-		e.cx_temp = e.Doc.Cursor.X
+		e.oldCursor.X = e.Doc.Cursor.X
 	}
+}
+
+func (e *Editor) saveDelChar() {
+	l := len([]rune(e.Doc.Name))
+	e.Doc.Name = e.Doc.Name[:l-1]
+}
+func (e *Editor) saveInserChar(ch rune) {
+	e.Doc.Name = e.Doc.Name + string(ch)
 }

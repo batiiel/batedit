@@ -22,14 +22,8 @@ func NewScreenBuffer() *ScreenBuffer {
 func (buf *ScreenBuffer) Clear() {
 	termbox.Clear(termbox.ColorLightGray, termbox.ColorBlack)
 }
-func (buf *ScreenBuffer) DrawDocument(doc *model.Documnet) {
-	buf.scrollDocument(doc)
-	buf.renderDocumnet(doc)
-	termbox.SetCursor(doc.Cursor.X-buf.OffsetCol+doc.CoutnNumLines, doc.Cursor.Y-buf.OffsetRow)
-	termbox.Flush()
-}
 
-func (buf *ScreenBuffer) renderDocumnet(doc *model.Documnet) {
+func (buf *ScreenBuffer) RenderDocumnet(doc *model.Documnet) {
 	for row := 0; row <= buf.Height-2; row++ {
 		bufRow := row + buf.OffsetRow
 
@@ -53,7 +47,7 @@ func (buf *ScreenBuffer) renderDocumnet(doc *model.Documnet) {
 				termbox.SetCell(0, row, '*', termbox.ColorBlue, termbox.ColorBlack)
 			} else if bufCol < len(doc.TextBuffer[bufRow]) {
 				ch := doc.TextBuffer[bufRow][bufCol]
-				offsetLine := col + doc.CoutnNumLines
+				offsetLine := col + doc.CoutnNumLines + 1
 
 				// coutnNum := countNumber(bufRow)
 				// bf := bufRow
@@ -73,7 +67,7 @@ func (buf *ScreenBuffer) renderDocumnet(doc *model.Documnet) {
 	}
 }
 
-func (buf *ScreenBuffer) scrollDocument(doc *model.Documnet) {
+func (buf *ScreenBuffer) ScrollDocument(doc *model.Documnet) {
 
 	// Если курсор выше видимой области
 	if doc.Cursor.Y < buf.OffsetRow {
@@ -88,12 +82,12 @@ func (buf *ScreenBuffer) scrollDocument(doc *model.Documnet) {
 		buf.OffsetCol = doc.Cursor.X
 	}
 	// Если курсор правее видимой области
-	if doc.Cursor.X > buf.OffsetCol+buf.Width-doc.CoutnNumLines-1 {
-		buf.OffsetCol = doc.Cursor.X - buf.Width + 1 + doc.CoutnNumLines
+	if doc.Cursor.X > buf.OffsetCol+buf.Width-doc.CoutnNumLines-2 {
+		buf.OffsetCol = doc.Cursor.X - buf.Width + 2 + doc.CoutnNumLines
 	}
-	lineLength := len(doc.TextBuffer[doc.Cursor.Y])
 	// Не скроллим дальше конца строки
-	if buf.OffsetCol > lineLength-buf.Width+1+doc.CoutnNumLines {
+	lineLength := len(doc.TextBuffer[doc.Cursor.Y])
+	if buf.OffsetCol > lineLength-buf.Width+2+doc.CoutnNumLines {
 		buf.OffsetCol = max(0, lineLength-buf.Width)
 	}
 }
