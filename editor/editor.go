@@ -18,7 +18,7 @@ const (
 )
 
 type Editor struct {
-	Doc       *model.Documnet
+	Doc       *model.Document
 	Screen    *screen.ScreenBuffer
 	Mode      EditorMode
 	oldCursor struct{ X, Y int }
@@ -32,7 +32,7 @@ func New() *Editor {
 	}
 	e := &Editor{}
 	e.Mode = ModeEdit
-	e.Doc = model.NewDocumnet()
+	e.Doc = model.NewDocument()
 	e.Screen = screen.NewScreenBuffer()
 	return e
 }
@@ -45,10 +45,10 @@ func (e *Editor) Draw() {
 		e.Screen.ScrollDocument(e.Doc)
 	}
 
-	e.Screen.RenderDocumnet(e.Doc)
+	e.Screen.RenderDocument(e.Doc)
 
 	if e.Mode == ModeEdit {
-		termbox.SetCursor(e.Doc.Cursor.X-e.Screen.OffsetCol+e.Doc.CoutnNumLines+1, e.Doc.Cursor.Y-e.Screen.OffsetRow)
+		termbox.SetCursor(e.Doc.Cursor.X-e.Screen.OffsetCol+e.Doc.CountNumLines+1, e.Doc.Cursor.Y-e.Screen.OffsetRow)
 	} else if e.Mode == ModeSave {
 		termbox.SetCursor(e.Doc.Cursor.X, e.Doc.Cursor.Y)
 	}

@@ -6,15 +6,15 @@ import (
 	"os"
 )
 
-type Documnet struct {
+type Document struct {
 	Name          string
 	TextBuffer    [][]rune
 	Cursor        struct{ X, Y int }
-	CoutnNumLines int
+	CountNumLines int
 }
 
-func NewDocumnet() *Documnet {
-	d := &Documnet{
+func NewDocument() *Document {
+	d := &Document{
 		Name:       "",
 		TextBuffer: [][]rune{{}},
 		Cursor: struct {
@@ -22,16 +22,16 @@ func NewDocumnet() *Documnet {
 			Y int
 		}{X: 0, Y: 0},
 	}
-	d.CoutnNumLines = countNumber(len(d.TextBuffer))
+	d.CountNumLines = countNumber(len(d.TextBuffer))
 	return d
 }
 
-func (d *Documnet) UpdateCountNum() {
-	d.CoutnNumLines = countNumber(len(d.TextBuffer))
+func (d *Document) UpdateCountNum() {
+	d.CountNumLines = countNumber(len(d.TextBuffer))
 }
 
 /* INSERT CHAR - start */
-func (d *Documnet) InsertChar(ch rune, countRows int) {
+func (d *Document) InsertChar(ch rune, countRows int) {
 	if ch == 0 {
 		return
 	}
@@ -55,7 +55,7 @@ func lineInsertChar(line *[]rune, at int, ch rune) {
 /* INSERT CHAR - end */
 
 /* DELETE CHAR - start */
-func (d *Documnet) DeleteChar() {
+func (d *Document) DeleteChar() {
 	if d.Cursor.Y == len(d.TextBuffer) {
 		return
 	}
@@ -75,7 +75,7 @@ func lineDeleteChar(line *[]rune, at int) {
 	*line = append((*line)[:at], (*line)[at+1:]...)
 }
 
-func (d *Documnet) raiseLine() {
+func (d *Document) raiseLine() {
 	if d.Cursor.Y == 0 {
 		return
 	}
@@ -93,7 +93,7 @@ func (d *Documnet) raiseLine() {
 
 /* DELETE CHAR - end */
 
-func (d *Documnet) Enter() {
+func (d *Document) Enter() {
 	rightLine := d.TextBuffer[d.Cursor.Y][d.Cursor.X:]
 	leftLine := d.TextBuffer[d.Cursor.Y][:d.Cursor.X]
 
@@ -109,7 +109,7 @@ func (d *Documnet) Enter() {
 }
 
 // READ FILE
-func (d *Documnet) ReadFile(filename string) {
+func (d *Document) ReadFile(filename string) {
 	d.Name = filename
 
 	file, err := os.Open(filename)
@@ -131,7 +131,7 @@ func (d *Documnet) ReadFile(filename string) {
 }
 
 // WRITE FILE
-func (d *Documnet) SaveToFile() {
+func (d *Document) SaveToFile() {
 	if d.Name == "" {
 		d.Name = "testFile.txt"
 	}
