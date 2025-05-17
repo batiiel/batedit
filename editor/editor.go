@@ -89,7 +89,7 @@ func (e *Editor) printPosCurBar(posText string) {
 	buf := []rune(posText)
 	x := e.Screen.Width - len(buf)
 	for _, ch := range buf {
-		termbox.SetCell(x, e.Screen.Height-1, ch, termbox.ColorLightGray, termbox.ColorDarkGray)
+		termbox.SetCell(x, e.Screen.Height-1, ch, termbox.ColorBlue, termbox.ColorDarkGray)
 		x++
 	}
 }
@@ -101,7 +101,7 @@ func (e *Editor) printBar(text string) {
 		if x < len(buffer_line) {
 			ch = rune(buffer_line[x])
 		}
-		termbox.SetCell(x, e.Screen.Height-1, ch, termbox.ColorLightGray, termbox.ColorDarkGray)
+		termbox.SetCell(x, e.Screen.Height-1, ch, termbox.ColorBlue, termbox.ColorDarkGray)
 	}
 }
 
